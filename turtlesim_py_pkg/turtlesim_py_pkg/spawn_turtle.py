@@ -71,8 +71,9 @@ class SpawnTurtleNode(Node):
     # ----------------------------
     def callback_call_spawn_turtle(self, future, x, y, theta, turtle_name):
         try:
-            response = future.result()          # Servis cevabını al
-            if response.name != "":             # Başarılıysa turtle adı gelir
+            response = future.result()          # Servis cevabını al. response diye bir değişken tanımladık ve ,future.result()    sınıfından dönen bir objedir ve bu objenin içinde name alanı bulunduğu için response.name olarak erişilir.
+
+            if response.name != "":             # Başarılıysa turtle adı gelir. ros2 interface show turtlesim/srv/Spawn olarak baktığımızda response olarak name veriyor sadece.
                 self.get_logger().info("Turtle: " + response.name + " is created!")
         except Exception as e:
             self.get_logger().error("Service call failed %r" % (e,))
