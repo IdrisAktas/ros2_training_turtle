@@ -2,6 +2,7 @@
 
 import sys
 import math
+from functools import partial   # Callback'e ekstra parametre geçirmek için
 
 import rclpy
 from rclpy.node import Node
@@ -30,7 +31,7 @@ class FindGoToLocationNode(Node):
         self.subscriber = self.create_subscription(Pose, '/turtle1/pose', self.callback_turtle_pose, 10)
         self.new_turtle_subscriber_ = self.create_subscription(TurtleArray, '/new_turtles', self.callback_new_turtles, 10)
 
-        #self.pose = Pose()
+        self.pose = Pose()
         self.timer = self.create_timer(0.1, self.turtle_controller)
 
 
@@ -49,7 +50,7 @@ class FindGoToLocationNode(Node):
          self.new_turtle_to_catch_ = msg.turtles[0]
 
     def turtle_controller(self):
-        if self.pose_==None or self.new_turtle_to_catch_==None:
+        if self.pose==None or self.new_turtle_to_catch_==None:
             return        
         
         msg = Twist()
@@ -101,7 +102,7 @@ class FindGoToLocationNode(Node):
             response = future.result()
             self.get.logger().info(f"Turtle {turtle_name} caught successfully.")
 
-            
+
         except Exception as e:
             self.get_logger().error("Service call failed %r" % (e,))
 
