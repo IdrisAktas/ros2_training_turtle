@@ -8,7 +8,7 @@ from rclpy.node import Node
 from turtlesim.msg import Pose
 from turtlesim_interfaces.msg import TurtleArray  
 from geometry_msgs.msg import Twist
-
+from turtlesim_interfaces.srv import CatchTurtle
 
 class FindGoToLocationNode(Node):
 
@@ -79,6 +79,34 @@ class FindGoToLocationNode(Node):
                 self.get_logger().info("SUCCESS! Target Reached!")
 
         self.publisher_.publish(msg)
+
+
+
+    def call_cath_turtle_server(self, turtle_name):
+        client = self.create_client(CatchTurtle, "/catch_turtle")
+
+        while not client.wait_for_service(1.0):
+            self.get_logger().warn("Waiting for Server - [Catch Turtles]")
+
+        request = CatchTurtle.Request()
+        request.name = turtle_name
+
+        future = client.call_async(request)
+        future.add_done_callback(partial(self.callback_call_catch_turtle,turtle_name=turtle_name))
+
+
+
+    def callback_call_catch_turtle(self, future, turtle_name):
+        try:
+            response = future.result()
+            self.get.logger().info(f"Turtle {turtle_name} caught successfully.")
+
+            
+        except Exception as e:
+            self.get_logger().error("Service call failed %r" % (e,))
+
+
+
 
 
 def main(args=None):

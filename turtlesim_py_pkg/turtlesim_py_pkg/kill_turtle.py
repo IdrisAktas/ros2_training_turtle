@@ -7,6 +7,7 @@ from functools import partial
 import rclpy
 from rclpy.node import Node
 from turtlesim.srv import Spawn
+from turtlesim.srv import Kill
 from turtlesim_interfaces.msg import Turtle
 from turtlesim_interfaces.msg import TurtleArray
 from turtlesim_interfaces.srv import CatchTurtle
@@ -23,7 +24,7 @@ class SpawnTurtleNode(Node):
         self.timer_ = self.create_timer(3, self.spawn_turtle)
 
     def callback_catch_turtle(self, request, response):
-        self.call_kill_turtle_server(request.name)
+        self.call_kill_server(request.name)
         response.success = True
         return response
 
@@ -34,6 +35,9 @@ class SpawnTurtleNode(Node):
         msg.turtles = self.new_turtles_list
         self.new_turtle_publisher_.publish(msg)
 
+
+
+
     def spawn_turtle(self):
         self.counter_ += 1
         turtle_name = self.name_ + str(self.counter_)
@@ -42,6 +46,9 @@ class SpawnTurtleNode(Node):
         theta = random.uniform(0.0, 2 * math.pi)
         self.call_spawn_turtle_server(x, y, theta, turtle_name)
         self.get_logger().info("Kordinatlar: " + str(x) + " --- " + str(y))
+
+
+
 
     def call_spawn_turtle_server(self, x, y, theta, turtle_name):
         client = self.create_client(Spawn, "/spawn")
@@ -56,12 +63,10 @@ class SpawnTurtleNode(Node):
         request.name = turtle_name
 
         future = client.call_async(request)
-        future.add_done_callback(
-            partial(
-                self.callback_call_spawn_turtle,
-                x=x, y=y, theta=theta, turtle_name=turtle_name
-            )
-        )
+        future.add_done_callback(partial(self.callback_call_spawn_turtle,x=x, y=y, theta=theta, turtle_name=turtle_name))
+
+
+
 
     def callback_call_spawn_turtle(self, future, x, y, theta, turtle_name):
         try:
@@ -78,6 +83,37 @@ class SpawnTurtleNode(Node):
                 self.publish_new_turtles()
         except Exception as e:
             self.get_logger().error("Service call failed %r" % (e,))
+
+
+
+    def call_kill_server(self, turtle_name):
+        client = self.create_client(Kill, "/kill")
+
+        while not client.wait_for_service(1.0):
+            self.get_logger().warn("Waiting for Server - [Kill Turtles]")
+
+
+        request = Kill.Request()
+        request.name = turtle_name
+
+        future = client.call_async(request)
+        future.add_done_callback(partial(self.callback_call_kill_turtle,turtle_name=turtle_name))
+
+
+
+    def callback_call_kill_turtle(self, future, turtle_name):
+        try:
+            response = future.result()
+            for (i,turtle) in enumerate(self.new_turtles_list):
+                if turtle.name == turtle_name:
+                    del self.new_turtles_list[i]
+                    self.publish_new_turtles()
+                    break
+        except Exception as e:
+            self.get_logger().error("Service call failed %r" % (e,))
+
+
+
 
 
 def main(args=None):
