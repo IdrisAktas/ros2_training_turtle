@@ -7,7 +7,8 @@ from functools import partial   # Callback'e ekstra parametre geçirmek için
 import rclpy             # ROS2 Python client
 from rclpy.node import Node
 from turtlesim.srv import Spawn   # TurtleSim spawn servisi
-
+from turtlesim_interfaces.msg import Turtle   # Oluşturulan turtle bilgisi için özel mesaj
+from turtlesim_interfaces.msg import TurtleArray   # Oluşturulan turtle bilgisi için özel mesaj
 
 class SpawnTurtleNode(Node):
 
@@ -17,9 +18,18 @@ class SpawnTurtleNode(Node):
     def __init__(self):
         super().__init__("spawn_turtle_node")                           # Node adı
         self.name_ = "turtle"                                           # Oluşturulacak turtle ismi prefix
-        self.counter_ = 1                                               # Kaçıncı turtle olduğunu sayar
-        self.timer_ = self.create_timer(0.1, self.spawn_turtle)         # Her 1 saniyede bir spawn_turtle() fonksiyonu çağrılır
+        self.counter_ = 1     
+        self.new_turtles_list=[] # değişken tipi liste Oluşturulan turtle bilgilerini tutmak için liste 
+        self.new_turtle_publisher_=self.create_publisher(TurtleArray, "new_turtles", 10)   # interface tarafında oluşturduğumuz TurtleArray msg tipinden gelen  bilgilerini yayınlamak için publisher oluştur                                                
+        self.timer_ = self.create_timer(3, self.spawn_turtle)         # Her 1 saniyede bir spawn_turtle() fonksiyonu çağrılır
    
+    # ----------------------------
+    # FUNCTION: publish_new_turtles: mesaj tipinden gelen  bilgilerini yayınlamak için publisher oluştur
+    # ----------------------------
+    def publish_new_turtles(self):
+        msg = TurtleArray()                          #  msg = Twist()  gibi önce tanımlama yapılıyor daha sonra içeriğine göre nokta ile çağırılıyor ros2 interface show turtlesim_interfaces/msg/TurtleArray içeriğine bu kodtan bakılıyor  TurtleArray mesajı oluştur
+        msg.turtles = self.new_turtles_list                  # Mevcut turtle listesini mesajın turtles alanına ata
+        self.new_turtle_publisher_.publish(msg)      # Mesajı yayınla
 
     # ----------------------------
     # FUNCTION: spawn_turtle: Spawn x,y ve theta tanımlamaları ve robot adı verileri tanımlanır.
@@ -75,6 +85,13 @@ class SpawnTurtleNode(Node):
 
             if response.name != "":             # Başarılıysa turtle adı gelir. ros2 interface show turtlesim/srv/Spawn olarak baktığımızda response olarak name veriyor sadece.
                 self.get_logger().info("Turtle: " + response.name + " is created!")
+                new_turtle = Turtle()           # TurtleArray da yukarda yaptğımız gibi burda mesaj tiplerini eşitliyoruz ve Yeni turtle bilgisi için Turtle mesajı oluştur
+                new_turtle.name = response.name # Turtle adı
+                new_turtle.x = x                # Turtle x pozisyonu
+                new_turtle.y = y                # Turtle y pozisyonu
+                new_turtle.theta = theta        # Turtle açısı
+                self.new_turtles_list.append(new_turtle)  # Yeni turtle'ı listeye ekle
+                self.publish_new_turtles()      # Güncellenen turtle listesini yayınla
         except Exception as e:
             self.get_logger().error("Service call failed %r" % (e,))
             # Servis çağrısı başarısız olursa hata bastırılır
@@ -93,10 +110,14 @@ def main(args=None):
 if __name__ == "__main__":
     main()
 
-
+    # kordinatlarını verip random kamlubalar oluşturuyoruz. daha sonra oluşturudğumuz interface yani mesaj tiplerinden veirleri alıp publkish ediyoruz
     
     # ----------------------------
-    # 1.FUNCTION: __init__: Node’u başlatır, zamanlayıcıyı kurar ve gerekli değişkenleri ayarlar.
+    # 0.FUNCTION: __init__: Node’u başlatır, zamanlayıcıyı kurar ve gerekli değişkenleri ayarlar.
+    # ----------------------------
+
+    # ----------------------------
+    # 1.FUNCTION: publish_new_turtles: mesaj tipinden gelen  bilgilerini yayınlamak için publisher oluştur
     # ----------------------------
 
 

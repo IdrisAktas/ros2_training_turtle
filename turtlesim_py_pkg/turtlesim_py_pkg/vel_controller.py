@@ -26,7 +26,7 @@ class VelControllerNode(Node):
     def publisher_vel(self):
         # Timer tarafından düzenli olarak çağrılan fonksiyon
         
-        msg = Twist()  # Gönderilecek hız mesajı oluşturulur
+        msg = Twist()  #mesaj tipini tanımlıyorsun ros2 interface show geometry_msgs/msg/Twist kodundan msj içeriklerine bakabiliyorsun. Gönderilecek hız mesajı oluşturulur
 
         # Terminal argümanlarının sayısını kontrol et
         # Beklenen kullanım:
