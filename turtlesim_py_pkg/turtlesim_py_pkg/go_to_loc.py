@@ -24,8 +24,8 @@ class GoToLocationNode(Node):
 
         # Hedef konuma yaklaşma toleransı
         # Pozisyon ve açı için ayrı eşikler tanımlanabilir
-        self.pose_threshold = 0.3
-        self.pose_threshold_angular = 0.03
+        self.pose_threshold = 0.3  # → Kaplumbağa hedefe 0.3 birimden daha fazla uzaksa ilerlemeye devam eder; bu mesafenin altına düşerse hedefe ulaşıldığı kabul edilir.
+        self.pose_threshold_angular = 0.03 #→ Kaplumbağa hedef yöne bakarken açı hatası 0.03 radyandan büyükse önce dönme hareketi yapılır, bu eşikten küçükse artık ileri harekete geçilir.
 
         # Varsayılan hedef konum (terminalden de alınabilir)
         self.target_x = 2.0      # Default hedef x
