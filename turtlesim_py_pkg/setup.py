@@ -28,7 +28,8 @@ setup(
             "go_to_location_node=turtlesim_py_pkg.go_to_loc:main",
             "spawn_turtle_node=turtlesim_py_pkg.spawn_turtle:main",
             "find_go_to_location_node=turtlesim_py_pkg.find_go_to_loc:main",
-            "kill_turtle_node=turtlesim_py_pkg.kill_turtle:main"
+            "kill_turtle_node=turtlesim_py_pkg.kill_turtle:main",
+            "find_and_kill_node=turtlesim_py_pkg.find_and_kill_test:main"
             
         ],
     },

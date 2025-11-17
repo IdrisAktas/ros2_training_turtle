@@ -56,13 +56,13 @@ class FindAndKillNode(Node):
         self.pose_threshold = 0.4          # Hedefe olan mesafe 0.4'ten küçükse "yeterince yaklaştı" kabul edilir
         self.pose_threshold_angular = 0.05 # Açı hatası (radyan) 0.05'ten küçükse "yeterince doğru yöne bakıyor" kabul edilir
 
-        # Avcı kaplumbağa: turtle1'in anlık pozisyonu burada tutulur
-        self.hunter_pose = Pose()
+        
+        self.hunter_pose = Pose()# Ana Turtle (Avcı) : turtle1'in anlık pozisyonu burada tutulur
 
         # Takip edilecek turtle'ların tutulduğu yapı
         # turtles_dict: {"turtle2": Turtle(msg), "turtle3": Turtle(msg), ...}
-        self.turtles_dict = {}   # Anahtar: turtle adı, Değer: Turtle mesajı (x,y,theta, name)
-        self.killed_turtles = set()  # Öldürülmüş turtle isimlerini set içinde saklıyoruz (hızlı lookup için)
+        self.turtles_dict = {}   # Anahtar: turtle adı, Değer: Turtle mesajı (x,y,theta, name). dict obje gibidir isme göre filtreleme yapılabilir.
+        self.killed_turtles = set()  # Öldürülmüş turtle isimlerini set içinde saklıyoruz (hızlı lookup için). set tekrarlı veriyi engeller ve sadece ismi tutar
         self.current_target: Turtle | None = None  # Şu anda peşinde olunan hedef (Turtle msg), yoksa None
 
         # turtle1'e hız komutu göndermek için publisher oluştur
@@ -150,16 +150,14 @@ class FindAndKillNode(Node):
             # Eğer isim daha önce kaydedilmemişse ve öldürülmüş listesinde yoksa:
             if turtle.name not in self.turtles_dict and turtle.name not in self.killed_turtles:
                 self.turtles_dict[turtle.name] = turtle
-                self.get_logger().info(
-                    f'Yeni hedef kaydedildi: {turtle.name} (x={turtle.x:.2f}, y={turtle.y:.2f})'
-                )
+                self.get_logger().info(f'Yeni hedef kaydedildi: {turtle.name} (x={turtle.x:.2f}, y={turtle.y:.2f})')
 
 
 
 
 
     # ----------------------------
-    # Yardımcı fonksiyon: Açıyı [-pi, pi] aralığına normalize et
+    # 3.Yardımcı fonksiyon: Açıyı [-pi, pi] aralığına normalize et
     # ----------------------------
 
 
@@ -192,8 +190,25 @@ class FindAndKillNode(Node):
         return angle
 
     # ----------------------------
-    # 3. Yardımcı fonksiyon: Sıradaki hedefi seç
+    # 4. Yardımcı fonksiyon: Sıradaki hedefi seç
     # ----------------------------
+
+
+    # ---------------------------------------------------------
+    # FUNCTION: select_next_target
+    # Bu fonksiyon, o anda herhangi bir hedef (current_target) yoksa yeni bir hedef
+    # seçmek için çağrılır. self.turtles_dict sözlüğü boşsa, sahnede hiç hedef
+    # kalmadığı anlamına gelir ve fonksiyon herhangi bir işlem yapmadan döner. Eğer
+    # sözlük boş değilse, içindeki turtle’lardan birinin adı (örneğin ilk eklenen)
+    # alınır ve buna karşılık gelen Turtle nesnesi self.current_target değişkenine
+    # atanır. Böylece avcı turtle1’in peşine düşeceği yeni bir hedef belirlenmiş olur.
+    # Bu yöntem şu anda en basit haliyle "ilk eklenen turtle’ı hedefle" mantığını
+    # kullanır; istenirse burası "en yakın turtle’ı seç", "en eski turtle’ı seç" gibi
+    # daha gelişmiş stratejilerle değiştirilebilir. Fonksiyon hedef seçildiğinde bunu
+    # log’a yazarak hangi turtle’ın takip edilmeye başlandığını bildirir.
+    # ---------------------------------------------------------
+
+
     def select_next_target(self):
         """
         Eğer şu anda bir hedef yoksa (current_target None ise),
@@ -208,14 +223,27 @@ class FindAndKillNode(Node):
         # Sözlükteki ilk turtle'ı seç (order Python 3.7+ ile insert sırasını korur)
         next_name = list(self.turtles_dict.keys())[0]
         self.current_target = self.turtles_dict[next_name]
-        self.get_logger().info(
-            f'Yeni hedef seçildi: {self.current_target.name} '
-            f'(x={self.current_target.x:.2f}, y={self.current_target.y:.2f})'
-        )
+        self.get_logger().info(f'Yeni hedef seçildi: {self.current_target.name} 'f'(x={self.current_target.x:.2f}, y={self.current_target.y:.2f})')
 
     # ----------------------------
-    # 4. Kill servisini çağıran fonksiyon
+    # 5. Kill servisini çağıran fonksiyon
     # ----------------------------
+
+
+    # ---------------------------------------------------------
+    # FUNCTION: call_kill_service
+    # Bu fonksiyon, verilen turtle_name’e sahip turtle’ı öldürmek (silmeyi) denemek için
+    # turtlesim’in /kill servisine asenkron bir istek gönderir. İlk olarak kill_client
+    # üzerinden servis hazır mı diye kontrol edilir; hazır değilse 1 saniye aralıklarla
+    # tekrar kontrol edilerek servis hazır olana dek beklenir. Servis hazır olduğunda
+    # bir Kill.Request nesnesi oluşturulur ve içine hedef turtle’ın adı yazılır.
+    # Daha sonra call_async ile bu istek servise gönderilir ve dönen future nesnesine,
+    # servis cevabı tamamlandığında çalışacak olan callback_kill_response fonksiyonu
+    # add_done_callback ile bağlanır. partial kullanılarak turtle_name parametresi
+    # callback fonksiyonuna sabitlenir, böylece cevap geldiğinde hangi turtle için
+    # kill işlemi yapıldığı bilinebilir. Fonksiyonun kendisi, kill işleminin sonucunu
+    # beklemez, sadece isteği başlatır.
+    # ---------------------------------------------------------
     def call_kill_service(self, turtle_name):
         """
         turtlesim'in /kill servisini asenkron olarak çağırır.
@@ -240,6 +268,26 @@ class FindAndKillNode(Node):
             partial(self.callback_kill_response, turtle_name=turtle_name)
         )
 
+
+    # ----------------------------
+    # 6. CALLBACK: Kill servisi
+    # ----------------------------
+
+
+
+    # ---------------------------------------------------------
+    # FUNCTION: callback_kill_response
+    # Bu fonksiyon, /kill servisine yapılan asenkron çağrının sonucunu işleyen
+    # callback fonksiyonudur. Servis cevabı future.result() ile alınır; Kill servisi
+    # herhangi bir veri gövdesi döndürmediği için sonuç içerik olarak kullanılmasa da,
+    # işlemin başarılı olup olmadığını anlayabilmek için çağrılır. Eğer future.result()
+    # çağrısı bir hata üretmezse, kill isteğinin başarıyla tamamlandığı log’a yazılır.
+    # Eğer servis çağrısı sırasında bir istisna (exception) oluşursa, bu exception
+    # yakalanır ve hata mesajı log’a basılır. Bu fonksiyon yalnızca kill servisinin
+    # sonucunu raporlamakla görevli olup, hedef seçimi veya hareket mantığını
+    # değiştirmez.
+    # ---------------------------------------------------------
+
     def callback_kill_response(self, future, turtle_name):
         """
         Kill servisine yapılan isteğin sonucunu işleyen callback.
@@ -252,8 +300,39 @@ class FindAndKillNode(Node):
             self.get_logger().error(f'Kill servisi hata verdi: {e!r}')
 
     # ----------------------------
-    # 5. ANA KONTROL DÖNGÜSÜ
+    # 6. ANA KONTROL DÖNGÜSÜ
     # ----------------------------
+
+    # ---------------------------------------------------------
+    # FUNCTION: control_loop
+    # Bu fonksiyon, node içinde tanımlı timer tarafından her 0.1 saniyede bir çağrılan
+    # ana kontrol döngüsüdür ve tüm "hedef bul, hedefe git, hedefi öldür" mantığını
+    # yönetir. İlk adımda, eğer current_target None ise yani şu anda aktif bir hedef
+    # yoksa, select_next_target fonksiyonu çağrılarak self.turtles_dict içinden yeni
+    # bir hedef seçilir. Eğer hâlâ hedef bulunamazsa (turtles_dict boşsa), turtle1’in
+    # hız komutları sıfırlanarak turtle1 durdurulur ve fonksiyon sona erer. Hedef
+    # belirlendiyse, öncelikle hedefin (x, y) konumu ile avcı turtle1’in mevcut
+    # konumu (hunter_pose.x, hunter_pose.y) arasındaki x ve y farkı hesaplanır ve bu
+    # farklardan Öklid mesafesi (distance) elde edilir. Daha sonra hedefe doğru
+    # bakılması gereken açı atan2(dist_y, dist_x) ile target_theta olarak bulunur;
+    # turtle1’in mevcut yönü (hunter_pose.theta) ile target_theta arasındaki fark
+    # normalize_angle fonksiyonu ile -pi ile +pi arasına çekilerek angle_error
+    # olarak hesaplanır. Eğer açı hatası pose_threshold_angular değerinden büyükse,
+    # turtle1’in önce hedefe dönmesi gerektiği kabul edilir ve Twist mesajının
+    # angular.z bileşeni hata ile orantılı bir değer alırken (örneğin 2.0 * angle_error),
+    # linear.x sıfırlanarak sadece dönme hareketi yapılır. Açı hatası küçük fakat
+    # hedefe olan mesafe pose_threshold değerinden büyükse, artık turtle1’in hedefe
+    # doğru ileri hareket etmesi istenir; bu durumda linear.x mesafe ile orantılı bir
+    # ileri hız alır (örneğin 2.0 * distance) ve angular.z sıfırlanarak düz ileri
+    # hareket sağlanır. Hem açı hatası küçük hem de mesafe pose_threshold altına
+    # düştüğünde turtle1’in hedefe yeterince yaklaştığı kabul edilir, hızlar sıfırlanır,
+    # hedefin adı alınarak call_kill_service fonksiyonu çağrılır ve ilgili turtle’ın
+    # yok edilmesi için /kill servisine istek gönderilir. Aynı zamanda bu hedefin
+    # ismi killed_turtles setine eklenir, turtles_dict sözlüğünden çıkarılır ve
+    # current_target None yapılarak bir sonraki hedef için sistem hazır hâle getirilir.
+    # Fonksiyonun sonunda oluşturulan Twist mesajı /turtle1/cmd_vel topiğine publish
+    # edilerek turtle1’in konumuna uygun hareket etmesi sağlanır.
+    # ---------------------------------------------------------
     def control_loop(self):
         """
         Bu fonksiyon her 0.1 saniyede bir çağrılır ve ana go-to-goal + öldürme
