@@ -359,7 +359,7 @@ class FindAndKillNode(Node):
         # Buraya geldiysek elimizde bir hedef var demektir
         # Hedefin konumunu al
         target_x = self.current_target.x
-        target_y = self.current_target.y
+        target_y = self.current_target.y # dnen
 
         # Avcı turtle1'in anlık konumunu al
         current_x = self.hunter_pose.x
