@@ -83,7 +83,7 @@ class GoToLocationNode(Node):
 
         # 1️⃣ Önce dönme kontrolü (Heading Control)
         if abs(angle_error) > self.pose_threshold_angular:
-            # Robot önce hedefe doğru dönemiyorsa sadece açısal hız verilir
+            # Robot önce  hedefe doğru dönemiyorsa sadece açısal hız verilir
             msg.angular.z = angle_error
             msg.linear.x = 0.0
 
